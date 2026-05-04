@@ -9,6 +9,35 @@ The project has two versions of the staking contracts:
 
 The main issues demonstrated are reentrancy and improper access control. The app also includes a simple scanner that looks through the Solidity contracts and reports the findings in the frontend.
 
+## Submission Information
+
+Project topic: Blockchain Security: Smart Contract Vulnerability Detection and Prevention in DeFi Applications
+
+Team members:
+| Abhinav Sharma | 885378174 | abhinavsharma@csu.fullerton.edu |
+
+Submission responsible team member: Abhinav Sharma
+
+Original project link:
+
+```text
+https://github.com/abhnv-shrma/defi-staking-security.git
+```
+
+## Improvements Made
+
+This project includes further improvements beyond a basic staking contract demo:
+
+- Added vulnerable and secure versions of ETH staking contracts to demonstrate reentrancy.
+- Added `EthAttackContract` to simulate a real reentrancy attack in a controlled local environment.
+- Added vulnerable and secure ERC20 staking contracts to demonstrate improper access control.
+- Added role-based access control with OpenZeppelin `AccessControl`.
+- Added reentrancy protection with OpenZeppelin `ReentrancyGuard`.
+- Added Hardhat tests that prove the vulnerable contracts can be exploited and the secure contracts block the same attacks.
+- Added a simple static scanner that generates vulnerability findings from the Solidity files.
+- Added a React frontend dashboard for live demo interaction, balance tracking, scanner results, and security explanations.
+- Added configurable ETH pool and attack amounts in the frontend instead of only using a fixed attack value.
+
 ## What This Project Shows
 
 The ETH staking demo shows a reentrancy attack. The vulnerable contract sends ETH before updating the user's balance, which gives an attacker contract a chance to call `withdraw` again before the first withdrawal finishes.
