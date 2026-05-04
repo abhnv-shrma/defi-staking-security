@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-05-03T21:31:05.281Z",
+  "summary": {
+    "high": 3,
+    "info": 3,
+    "total": 6
+  },
+  "findings": [
+    {
+      "contract": "SecureEthStaking.sol",
+      "id": "REENTRANCY_GUARD_PRESENT",
+      "severity": "info",
+      "description": "Secure contract uses ReentrancyGuard/nonReentrant.",
+      "source": "contracts/SecureEthStaking.sol"
+    },
+    {
+      "contract": "SecureStaking.sol",
+      "id": "REENTRANCY_GUARD_PRESENT",
+      "severity": "info",
+      "description": "Secure contract uses ReentrancyGuard/nonReentrant.",
+      "source": "contracts/SecureStaking.sol"
+    },
+    {
+      "contract": "SecureStaking.sol",
+      "id": "ROLE_BASED_ACCESS_CONTROL_PRESENT",
+      "severity": "info",
+      "description": "Secure contract uses role-based access control.",
+      "source": "contracts/SecureStaking.sol"
+    },
+    {
+      "contract": "VulnerableEthStaking.sol",
+      "id": "REENTRANCY_TRANSFER_BEFORE_EFFECTS",
+      "severity": "high",
+      "description": "External value/token transfer appears before the caller balance is cleared.",
+      "source": "contracts/VulnerableEthStaking.sol"
+    },
+    {
+      "contract": "VulnerableStaking.sol",
+      "id": "REENTRANCY_TRANSFER_BEFORE_EFFECTS",
+      "severity": "high",
+      "description": "External value/token transfer appears before the caller balance is cleared.",
+      "source": "contracts/VulnerableStaking.sol"
+    },
+    {
+      "contract": "VulnerableStaking.sol",
+      "id": "MISSING_ACCESS_CONTROL",
+      "severity": "high",
+      "description": "Administrative reward-rate update is externally callable without role/owner checks.",
+      "source": "contracts/VulnerableStaking.sol"
+    }
+  ]
+}
