@@ -66,6 +66,35 @@ const checks = [
       return fileName.includes("SecureStaking") && /AccessControl/.test(source);
     },
   },
+  {
+    id: "FEE_ON_TRANSFER_ACCOUNTING_RISK",
+    severity: "high",
+    description:
+      "Staking contract credits the requested transfer amount without measuring how many tokens were actually received.",
+    test(fileName, source) {
+      return (
+        fileName.includes("VulnerableFeeStaking") &&
+        /transferFrom\(msg\.sender,\s*address\(this\),\s*amount\)/.test(
+          source
+        ) &&
+        /balances\[msg\.sender\]\s*\+=\s*amount/.test(source)
+      );
+    },
+  },
+  {
+    id: "ACTUAL_RECEIVED_ACCOUNTING_PRESENT",
+    severity: "info",
+    description:
+      "Secure staking contract measures token balance before and after transfer to credit only the amount actually received.",
+    test(fileName, source) {
+      return (
+        fileName.includes("SecureFeeStaking") &&
+        /beforeBalance/.test(source) &&
+        /receivedAmount/.test(source) &&
+        /safeTransferFrom/.test(source)
+      );
+    },
+  },
 ];
 
 const findings = [];

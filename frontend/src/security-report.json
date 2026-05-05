@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-05-03T21:31:05.281Z",
+  "generatedAt": "2026-05-05T20:58:12.441Z",
   "summary": {
-    "high": 3,
-    "info": 3,
-    "total": 6
+    "high": 4,
+    "info": 4,
+    "total": 8
   },
   "findings": [
     {
@@ -12,6 +12,13 @@
       "severity": "info",
       "description": "Secure contract uses ReentrancyGuard/nonReentrant.",
       "source": "contracts/SecureEthStaking.sol"
+    },
+    {
+      "contract": "SecureFeeStaking.sol",
+      "id": "ACTUAL_RECEIVED_ACCOUNTING_PRESENT",
+      "severity": "info",
+      "description": "Secure staking contract measures token balance before and after transfer to credit only the amount actually received.",
+      "source": "contracts/SecureFeeStaking.sol"
     },
     {
       "contract": "SecureStaking.sol",
@@ -33,6 +40,13 @@
       "severity": "high",
       "description": "External value/token transfer appears before the caller balance is cleared.",
       "source": "contracts/VulnerableEthStaking.sol"
+    },
+    {
+      "contract": "VulnerableFeeStaking.sol",
+      "id": "FEE_ON_TRANSFER_ACCOUNTING_RISK",
+      "severity": "high",
+      "description": "Staking contract credits the requested transfer amount without measuring how many tokens were actually received.",
+      "source": "contracts/VulnerableFeeStaking.sol"
     },
     {
       "contract": "VulnerableStaking.sol",

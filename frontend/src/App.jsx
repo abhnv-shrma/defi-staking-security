@@ -30,6 +30,11 @@ const tokenStakingAbi = [
   "function changeRewardRate(uint256)",
 ];
 
+const feeStakingAbi = [
+  "function balances(address) view returns (uint256)",
+  "function stake(uint256)",
+];
+
 const HARDHAT_RPC_URL = "http://127.0.0.1:8545";
 const HARDHAT_CHAIN_ID = 31337n;
 const HARDHAT_CHAIN_ID_HEX = "0x7a69";
@@ -77,6 +82,13 @@ const explanations = {
       "The secure token staking contract protects that function with a reward-manager role, preventing normal users from changing administrative parameters.",
     ],
   },
+  feeToken: {
+    title: "Fee-On-Transfer Accounting Bug",
+    paragraphs: [
+      "Some ERC20 tokens take a fee every time they are transferred. If a user stakes 100 FEE, this demo token burns 2%, so the staking contract only receives 98 FEE.",
+      "The vulnerable staking contract records the requested 100 FEE anyway. The secure version measures its token balance before and after the transfer, then credits only the actual amount received.",
+    ],
+  },
   scanner: {
     title: "Automated Vulnerability Detection",
     paragraphs: [
@@ -107,14 +119,26 @@ function App() {
     vulnerableRate: "0",
     secureRate: "0",
   });
+  const [feeData, setFeeData] = useState({
+    walletBalance: "0",
+    vulnerablePool: "0",
+    securePool: "0",
+    vulnerableRecorded: "0",
+    secureRecorded: "0",
+  });
   const [ethStakeAmount, setEthStakeAmount] = useState("5");
   const [attackAmount, setAttackAmount] = useState("1");
   const [stakeAmount, setStakeAmount] = useState("100");
+  const [feeStakeAmount, setFeeStakeAmount] = useState("100");
   const [rewardRate, setRewardRate] = useState("999");
 
   const isVulnerableDrained = Number(balances.vulnerable) <= 0;
   const tokenDemoConfigured =
     contracts.mockToken && contracts.vulnerableStaking && contracts.secureStaking;
+  const feeDemoConfigured =
+    contracts.feeToken &&
+    contracts.vulnerableFeeStaking &&
+    contracts.secureFeeStaking;
   const statusTone = status.toLowerCase().includes("blocked")
     ? "warning"
     : status.toLowerCase().includes("stopped")
@@ -145,6 +169,15 @@ function App() {
     return numericValue.toLocaleString(undefined, {
       maximumFractionDigits: 4,
     });
+  }
+
+  function getExpectedFeeReceived() {
+    try {
+      const amount = ethers.parseEther(feeStakeAmount || "0");
+      return formatToken((amount * 98n) / 100n);
+    } catch {
+      return "0";
+    }
   }
 
   function getErrorMessage(error) {
@@ -277,6 +310,7 @@ function App() {
       });
 
       await refreshTokenData(accountOverride);
+      await refreshFeeData(accountOverride);
 
       if (showStatus) {
         setStatus(`Balances refreshed from local Hardhat block ${blockNumber}.`);
@@ -377,6 +411,88 @@ function App() {
       vulnerableRate: vulnerableRate.toString(),
       secureRate: secureRate.toString(),
     });
+  }
+
+  async function refreshFeeData(accountOverride = account) {
+    if (!feeDemoConfigured) {
+      return;
+    }
+
+    const provider = getLocalProvider();
+    const token = new ethers.Contract(contracts.feeToken, erc20Abi, provider);
+    const vulnerableStaking = new ethers.Contract(
+      contracts.vulnerableFeeStaking,
+      feeStakingAbi,
+      provider
+    );
+    const secureStaking = new ethers.Contract(
+      contracts.secureFeeStaking,
+      feeStakingAbi,
+      provider
+    );
+
+    const wallet = accountOverride || ethers.ZeroAddress;
+    const [
+      walletBalance,
+      vulnerablePool,
+      securePool,
+      vulnerableRecorded,
+      secureRecorded,
+    ] = await Promise.all([
+      token.balanceOf(wallet),
+      token.balanceOf(contracts.vulnerableFeeStaking),
+      token.balanceOf(contracts.secureFeeStaking),
+      vulnerableStaking.balances(wallet),
+      secureStaking.balances(wallet),
+    ]);
+
+    setFeeData({
+      walletBalance: formatToken(walletBalance),
+      vulnerablePool: formatToken(vulnerablePool),
+      securePool: formatToken(securePool),
+      vulnerableRecorded: formatToken(vulnerableRecorded),
+      secureRecorded: formatToken(secureRecorded),
+    });
+  }
+
+  async function stakeFeeTokens(contractKey) {
+    try {
+      setCurrentExplanation("feeToken");
+
+      if (!feeDemoConfigured) {
+        setStatus("Fee-token staking demo is not deployed. Redeploy the demo first.");
+        return;
+      }
+
+      const amount = ethers.parseEther(feeStakeAmount || "0");
+
+      if (amount <= 0n) {
+        setStatus("Enter a fee-token staking amount greater than 0.");
+        return;
+      }
+
+      const signer = await getReadySigner();
+      const token = new ethers.Contract(contracts.feeToken, erc20Abi, signer);
+      const stakingAddress = contracts[contractKey];
+      const staking = new ethers.Contract(stakingAddress, feeStakingAbi, signer);
+
+      setStatus(`Approving ${feeStakeAmount} FEE for staking...`);
+      const approveTx = await token.approve(stakingAddress, amount);
+      await approveTx.wait();
+
+      setStatus(`Staking ${feeStakeAmount} FEE...`);
+      const stakeTx = await staking.stake(amount, { gasLimit: 300000 });
+      await stakeTx.wait();
+
+      setStatus(
+        contractKey === "vulnerableFeeStaking"
+          ? `Vulnerable staking recorded the requested ${feeStakeAmount} FEE even though the token charged a transfer fee.`
+          : "Secure staking credited only the actual FEE received after the transfer fee."
+      );
+      await refreshBalances();
+    } catch (error) {
+      setStatus("Fee-token staking failed: " + getErrorMessage(error));
+    }
   }
 
   async function advanceRewardTime() {
@@ -845,6 +961,96 @@ function App() {
                     Attempt Unauthorized Change
                   </button>
                 </div>
+              </article>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="token-demo">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Fee-on-transfer token</p>
+            <h2>Accounting Bug In Staking Deposits</h2>
+          </div>
+          <div className="input-row">
+            <label>
+              Fee-token stake
+              <input
+                value={feeStakeAmount}
+                onChange={(event) => setFeeStakeAmount(event.target.value)}
+                inputMode="decimal"
+              />
+            </label>
+          </div>
+        </div>
+
+        {!feeDemoConfigured ? (
+          <div className="notice">
+            Redeploy the demo to add fee-token staking addresses to contracts.json.
+          </div>
+        ) : (
+          <>
+            <div className="token-summary">
+              <div className="metric">
+                <span>Wallet FEE Balance</span>
+                <strong>{feeData.walletBalance} FEE</strong>
+              </div>
+              <div className="metric">
+                <span>Transfer Fee</span>
+                <strong>2%</strong>
+              </div>
+              <div className="metric">
+                <span>Expected Received</span>
+                <strong>{getExpectedFeeReceived()} FEE</strong>
+              </div>
+            </div>
+
+            <div className="contract-grid">
+              <article className="contract-card vulnerable">
+                <div className="card-header">
+                  <p className="eyebrow">Vulnerable fee staking</p>
+                  <h2>Credits Requested Amount</h2>
+                </div>
+                <div className="metric-list">
+                  <div className="metric">
+                    <span>Actual Contract Balance</span>
+                    <strong>{feeData.vulnerablePool} FEE</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Your Recorded Stake</span>
+                    <strong>{feeData.vulnerableRecorded} FEE</strong>
+                  </div>
+                </div>
+                <button
+                  className="button danger"
+                  onClick={() => stakeFeeTokens("vulnerableFeeStaking")}
+                >
+                  Stake Vulnerable FEE
+                </button>
+              </article>
+
+              <article className="contract-card secure">
+                <div className="card-header">
+                  <p className="eyebrow">Secure fee staking</p>
+                  <h2>Credits Actual Received</h2>
+                </div>
+                <div className="metric-list">
+                  <div className="metric">
+                    <span>Actual Contract Balance</span>
+                    <strong>{feeData.securePool} FEE</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Your Recorded Stake</span>
+                    <strong>{feeData.secureRecorded} FEE</strong>
+                  </div>
+                </div>
+                <button
+                  className="button success"
+                  onClick={() => stakeFeeTokens("secureFeeStaking")}
+                >
+                  Stake Secure FEE
+                </button>
               </article>
             </div>
           </>

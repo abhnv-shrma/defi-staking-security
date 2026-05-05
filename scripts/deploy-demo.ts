@@ -7,6 +7,7 @@ async function main() {
   const [deployer, victim] = await viem.getWalletClients();
 
   const token = await viem.deployContract("MockToken");
+  const feeToken = await viem.deployContract("FeeToken");
   const vulnerableTokenStaking = await viem.deployContract(
     "VulnerableStaking",
     [token.address]
@@ -16,6 +17,13 @@ async function main() {
     [token.address],
     { client: { wallet: victim } }
   );
+  const vulnerableFeeStaking = await viem.deployContract(
+    "VulnerableFeeStaking",
+    [feeToken.address]
+  );
+  const secureFeeStaking = await viem.deployContract("SecureFeeStaking", [
+    feeToken.address,
+  ]);
 
   const vulnerable = await viem.deployContract("VulnerableEthStaking");
   const secure = await viem.deployContract("SecureEthStaking");
@@ -59,11 +67,18 @@ async function main() {
   ]);
 
   await token.write.transfer([victim.account.address, 1_000n * 10n ** 18n]);
+  await feeToken.write.transfer([
+    victim.account.address,
+    1_000n * 10n ** 18n,
+  ]);
 
   const data = {
     mockToken: token.address,
+    feeToken: feeToken.address,
     vulnerableStaking: vulnerableTokenStaking.address,
     secureStaking: secureTokenStaking.address,
+    vulnerableFeeStaking: vulnerableFeeStaking.address,
+    secureFeeStaking: secureFeeStaking.address,
     vulnerableEthStaking: vulnerable.address,
     secureEthStaking: secure.address,
     vulnerableAttack: vulnerableAttack.address,
