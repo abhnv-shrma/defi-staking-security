@@ -7,7 +7,7 @@ The project has two versions of the staking contracts:
 - a vulnerable version, built on purpose with security flaws
 - a secure version, using common Solidity security patterns
 
-The main issues demonstrated are reentrancy and improper access control. The app also includes a simple scanner that looks through the Solidity contracts and reports the findings in the frontend.
+The main issues demonstrated are reentrancy, improper access control, and incorrect accounting for fee-on-transfer tokens. The app also includes a simple scanner that looks through the Solidity contracts and reports the findings in the frontend.
 
 ## Submission Information
 
@@ -31,8 +31,10 @@ This project includes further improvements beyond a basic staking contract demo:
 - Added vulnerable and secure versions of ETH staking contracts to demonstrate reentrancy.
 - Added `EthAttackContract` to simulate a real reentrancy attack in a controlled local environment.
 - Added vulnerable and secure ERC20 staking contracts to demonstrate improper access control.
+- Added vulnerable and secure fee-token staking contracts to demonstrate incorrect accounting with fee-on-transfer tokens.
 - Added role-based access control with OpenZeppelin `AccessControl`.
 - Added reentrancy protection with OpenZeppelin `ReentrancyGuard`.
+- Added balance-delta accounting to securely support fee-on-transfer ERC20 tokens.
 - Added Hardhat tests that prove the vulnerable contracts can be exploited and the secure contracts block the same attacks.
 - Added a simple static scanner that generates vulnerability findings from the Solidity files.
 - Added a React frontend dashboard for live demo interaction, balance tracking, scanner results, and security explanations.
@@ -45,6 +47,8 @@ The ETH staking demo shows a reentrancy attack. The vulnerable contract sends ET
 The secure ETH contract fixes this by updating state first and using OpenZeppelin's `ReentrancyGuard`.
 
 The ERC20 staking demo shows a reward-rate access-control issue. In the vulnerable contract, any wallet can change the reward rate. In the secure contract, only an address with the reward manager role can update it.
+
+The fee-token staking demo shows an accounting bug. The vulnerable contract assumes the full requested token amount arrives during `transferFrom`, even if the token charges a transfer fee. That causes the contract to credit users for more tokens than it actually received. The secure contract measures the actual amount received and credits only that amount.
 
 ## Tech Stack
 
@@ -64,8 +68,11 @@ contracts/
   SecureEthStaking.sol       Protected ETH staking contract
   VulnerableStaking.sol      ERC20 staking contract with weak access control
   SecureStaking.sol          ERC20 staking contract with role-based access control
+  VulnerableFeeStaking.sol   Fee-token staking contract with incorrect accounting
+  SecureFeeStaking.sol       Fee-token staking contract with balance-delta accounting
   EthAttackContract.sol      Attack contract used in the reentrancy demo
   MockToken.sol              Test ERC20 token
+  FeeToken.sol               ERC20 token that burns a fee on transfers
 
 scripts/
   deploy-demo.ts             Deploys the demo contracts locally
@@ -79,6 +86,7 @@ frontend/
 test/
   reentrancy.test.ts
   staking.test.ts
+  fee-token.test.ts
   security-scan.test.ts
 ```
 
@@ -165,6 +173,13 @@ In the token staking section, you can:
 - exploit the vulnerable reward-rate function
 - try the same reward-rate change against the secure contract
 
+In the fee-token section, you can:
+
+- stake fee-on-transfer tokens into the vulnerable or secure contract
+- compare the recorded staking balance against the actual received token amount
+- see how the vulnerable contract over-credits deposits
+- verify that the secure contract records only the net amount received
+
 The explanation box at the bottom changes based on what you last interacted with.
 
 ## Running Tests
@@ -179,6 +194,8 @@ The tests check that:
 - the secure ETH staking contract blocks the same attack
 - the vulnerable token staking contract allows unauthorized reward-rate changes
 - the secure token staking contract blocks unauthorized reward-rate changes
+- the vulnerable fee-token staking contract over-credits deposits
+- the secure fee-token staking contract records only the actual tokens received
 - the scanner finds the expected issues
 
 ## Running The Scanner
